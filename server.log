@@ -1,4 +1,0 @@
-[dotenv@17.3.1] injecting env (36) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
-[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
-[port-registry] Bestaande poort: central-ai-waterfall → :5005
-[AI-SERVICE] Running on http://localhost:5005

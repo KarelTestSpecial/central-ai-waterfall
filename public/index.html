@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIGA Waterfall | AI Command Center</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0b0e14;
+            --card: #151921;
+            --accent: #00d2ff;
+            --text: #e1e1e1;
+            --muted: #8b949e;
+            --green: #39d353;
+            --red: #f85149;
+            --border: #30363d;
+        }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 20px; margin-bottom: 30px; }
+        h1 { margin: 0; font-size: 1.5rem; color: var(--accent); }
+        .status-badge { background: rgba(57, 211, 83, 0.1); color: var(--green); padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; border: 1px solid var(--green); }
+        
+        .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        .panel h2 { font-size: 1.1rem; margin-top: 0; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        
+        .model-list { display: flex; flex-direction: column; gap: 10px; }
+        .model-item { background: var(--bg); border: 1px solid var(--border); padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .model-name { font-family: monospace; font-weight: bold; }
+        .provider-tag { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; background: #30363d; }
+        
+        .indicator { width: 10px; height: 10px; border-radius: 50%; }
+        .online { background: var(--green); box-shadow: 0 0 8px var(--green); }
+        .exhausted { background: var(--red); box-shadow: 0 0 8px var(--red); }
+        
+        .usage-log { font-family: monospace; font-size: 0.8rem; height: 300px; overflow-y: auto; background: #010409; padding: 15px; border-radius: 8px; color: #7ee787; white-space: pre-wrap; }
+        .stats-box { text-align: center; padding: 15px; border: 1px dashed var(--border); border-radius: 8px; margin-bottom: 10px; }
+        .stats-val { font-size: 1.5rem; font-weight: 800; color: var(--accent); }
+        .stats-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="bi bi-water"></i> AIGA Waterfall Engine</h1>
+            <div class="status-badge"><i class="bi bi-check-circle-fill"></i> SYSTEM ACTIVE</div>
+        </div>
+
+        <div class="grid">
+            <div class="panel">
+                <h2><i class="bi bi-layers"></i> Actieve Model Stack (Fallback Volgorde)</h2>
+                <div id="model-stack" class="model-list">
+                    Laden van configuratie...
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2><i class="bi bi-bar-chart-steps"></i> Systeem Status</h2>
+                <div class="stats-box">
+                    <div id="total-requests" class="stats-val">--</div>
+                    <div class="stats-label">Totaal Aanvragen</div>
+                </div>
+                <div class="stats-box">
+                    <div id="active-providers" class="stats-val">--</div>
+                    <div class="stats-label">Beschikbare Providers</div>
+                </div>
+                <div id="exhausted-list" style="margin-top: 20px;">
+                    <!-- Lockouts hier -->
+                </div>
+            </div>
+        </div>
+
+        <div class="panel" style="margin-top: 20px;">
+            <h2><i class="bi bi-terminal"></i> Live Traffic Log</h2>
+            <div id="usage-log" class="usage-log">Loading logs...</div>
+        </div>
+    </div>
+
+    <script>
+        async function updateDashboard() {
+            try {
+                const res = await fetch('/api/status');
+                const data = await res.json();
+                
+                // Update Stack
+                const stackDiv = document.getElementById('model-stack');
+                stackDiv.innerHTML = data.sequence.map((m, i) => `
+                    <div class="model-item">
+                        <div>
+                            <span style="color:var(--muted); font-size:0.8rem;">#${i+1}</span>
+                            <span class="model-name">${m}</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:10px">
+                            <span class="provider-tag">${getProvider(m, data.config)}</span>
+                            <div class="indicator ${data.exhausted.includes(getProvider(m, data.config)) ? 'exhausted' : 'online'}"></div>
+                        </div>
+                    </div>
+                `).join('');
+
+                // Update Stats
+                document.getElementById('total-requests').innerText = data.stats.total;
+                document.getElementById('active-providers').innerText = data.stats.providers;
+                
+                // Update Logs
+                const logRes = await fetch('/api/logs');
+                const logData = await logRes.json();
+                const logWindow = document.getElementById('usage-log');
+                logWindow.innerText = logData.logs;
+                logWindow.scrollTop = logWindow.scrollHeight;
+
+            } catch (e) { console.error("Update failed", e); }
+        }
+
+        function getProvider(model, config) {
+            if (config.groq?.includes(model)) return 'groq';
+            if (config["google-1"]?.includes(model) || config["google-2"]?.includes(model)) return 'google';
+            if (model.includes(':')) return 'openrouter';
+            return 'other';
+        }
+
+        setInterval(updateDashboard, 5000);
+        updateDashboard();
+    </script>
+</body>
+</html>
