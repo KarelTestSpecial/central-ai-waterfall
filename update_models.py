@@ -5,7 +5,7 @@ from pathlib import Path
 
 # Configuratie
 CONFIG_PATH = Path("/home/kareltestspecial/KDC/central-ai-waterfall/ai-models.json")
-OR_API_KEY = "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"
+OR_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 def fetch_free_models():
     print("🔍 Ophalen van gratis OpenRouter modellen...")
